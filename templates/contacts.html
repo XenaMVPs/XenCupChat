@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}CipherCup - Contactos{% endblock %}
+
+{% block content %}
+<div class="contacts-container">
+    <div class="contacts-list">
+        <div class="contacts-header">
+            <h2 class="contacts-title terminal-text">Mis Contactos</h2>
+            <button class="btn btn-primary btn-sm" id="copy-invite-btn">
+                <i class="fas fa-user-plus"></i> Invitar
+            </button>
+        </div>
+
+        <div class="contacts-search">
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="contact-search" class="search-input" placeholder="Buscar contactos...">
+            </div>
+        </div>
+
+        <div class="contact-items">
+            {% if contacts and contacts|length > 0 %}
+                {% for contact in contacts %}
+                    <div class="contact-item">
+                        <div class="contact-avatar-container">
+                            {% if contact.profile_picture_path %}
+                                <img src="{{ url_for('static', filename=contact.profile_picture_path) }}" alt="{{ contact.username }}" class="contact-avatar">
+                            {% else %}
+                                <div class="default-avatar contact-avatar">{{ contact.username|first|upper }}</div>
+                            {% endif %}
+                            {% if contact.is_online %}
+                                <div class="online-indicator"></div>
+                            {% endif %}
+                        </div>
+                        <div class="contact-info">
+                            <h3 class="contact-name">{{ contact.username }}</h3>
+                            <p class="contact-bio">{{ contact.bio or 'Sin biografía' }}</p>
+                        </div>
+                        <div class="contact-actions">
+                            <a href="{{ url_for('chat_view', partner_id=contact.user_id) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-comments"></i> Chatear
+                            </a>
+                            <button class="btn btn-sm btn-danger remove-contact-btn" data-id="{{ contact.user_id }}" data-name="{{ contact.username }}">
+                                <i class="fas fa-user-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3 class="empty-state-title">No tienes contactos</h3>
+                    <p class="empty-state-message">Comparte tu enlace de invitación para añadir contactos.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="invitation-sidebar">
+        <h3 class="sidebar-title">
+            <i class="fas fa-link text-primary"></i> Tu Enlace de Invitación
+        </h3>
+        
+        <p class="invitation-desc">Comparte este enlace único para que otros puedan conectar contigo en CipherCup.</p>
+        
+        <div class="invitation-box">
+            <div class="invitation-link">
+                <input type="text" id="invitation-url" class="invitation-input" value="{{ invitation_url }}" readonly>
+                <button id="copy-btn" class="copy-btn">
+                    <i class="fas fa-copy"></i> Copiar
+                </button>
+            </div>
+            
+            <div class="invitation-note">
+                <i class="fas fa-info-circle"></i> Cualquier persona con este enlace podrá añadirte a sus contactos.
+            </div>
+        </div>
+        
+        <div id="qrcode-container" class="qrcode-container">
+            <h4 class="qr-title">Código QR de invitación</h4>
+            <div id="qrcode" class="qrcode"></div>
+            <div class="qr-hint">Muestra este código para que otros lo escaneen</div>
+        </div>
+        
+        <div class="share-options">
+            <button class="share-option" id="email-share-btn">
+                <i class="fas fa-envelope"></i>
+                <span>Email</span>
+            </button>
+            <button class="share-option" id="whatsapp-share-btn">
+                <i class="fab fa-whatsapp"></i>
+                <span>WhatsApp</span>
+            </button>
+            <button class="share-option" id="telegram-share-btn">
+                <i class="fab fa-telegram-plane"></i>
+                <span>Telegram</span>
+            </button>
+            <button class="share-option" id="clipboard-btn">
+                <i class="fas fa-clipboard"></i>
+                <span>Copiar</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar contacto -->
+<div id="remove-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Eliminar Contacto</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>¿Estás seguro de que quieres eliminar a <span id="contact-name"></span> de tus contactos?</p>
+            <p class="text-warning">Se eliminarán todas las conversaciones con este contacto.</p>
+            
+            <form id="remove-form" method="post">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary cancel-remove">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de compartir invitación -->
+<div id="share-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Compartir Invitación</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="share-qrcode" class="qrcode-large"></div>
+            <div class="invitation-link mt-4 mb-3">
+                <input type="text" id="share-invitation-url" class="invitation-input" value="{{ invitation_url }}" readonly>
+                <button id="share-copy-btn" class="copy-btn">
+                    <i class="fas fa-copy"></i> Copiar
+                </button>
+            </div>
+            
+            <div class="share-message-container">
+                <h4 class="mb-2">Mensaje sugerido</h4>
+                <textarea id="share-message" class="form-group input" rows="3" readonly>¡Hola! Te invito a unirte a CipherCup, una aplicación de mensajería segura. Usa mi enlace de invitación para conectar conmigo: {{ invitation_url }}</textarea>
+                <button class="btn btn-sm btn-outline mt-2" id="copy-message-btn">
+                    <i class="fas fa-copy"></i> Copiar Mensaje
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Búsqueda de contactos
+        const searchInput = document.getElementById('contact-search');
+        const contactItems = document.querySelectorAll('.contact-item');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                contactItems.forEach(item => {
+                    const contactName = item.querySelector('.contact-name').textContent.toLowerCase();
+                    const contactBio = item.querySelector('.contact-bio').textContent.toLowerCase();
+                    
+                    if (contactName.includes(searchTerm) || contactBio.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Generar QR code
+        const qrcode = new QRCode(document.getElementById("qrcode"), {
+            text: "{{ invitation_url }}",
+            width: 128,
+            height: 128,
+            colorDark: "#00ff9d",
+            colorLight: "#252836",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        // Generar QR code grande para modal
+        const shareQrcode = new QRCode(document.getElementById("share-qrcode"), {
+            text: "{{ invitation_url }}",
+            width: 256,
+            height: 256,
+            colorDark: "#00ff9d",
+            colorLight: "#252836",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        // Copiar enlace de invitación
+        const copyBtn = document.getElementById('copy-btn');
+        const invitationInput = document.getElementById('invitation-url');
+        
+        if (copyBtn && invitationInput) {
+            copyBtn.addEventListener('click', function() {
+                invitationInput.select();
+                document.execCommand('copy');
+                
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copiado';
+                
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Modal de eliminación de contacto
+        const removeModal = document.getElementById('remove-modal');
+        const removeBtns = document.querySelectorAll('.remove-contact-btn');
+        const contactNameSpan = document.getElementById('contact-name');
+        const removeForm = document.getElementById('remove-form');
+        const closeModal = document.querySelector('#remove-modal .close-modal');
+        const cancelRemove = document.querySelector('.cancel-remove');
+        
+        if (removeModal && removeBtns.length > 0) {
+            removeBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const contactId = this.dataset.id;
+                    const contactName = this.dataset.name;
+                    
+                    contactNameSpan.textContent = contactName;
+                    removeForm.action = `/contacts/remove/${contactId}`;
+                    removeModal.style.display = 'flex';
+                });
+            });
+            
+            if (closeModal) {
+                closeModal.addEventListener('click', function() {
+                    removeModal.style.display = 'none';
+                });
+            }
+            
+            if (cancelRemove) {
+                cancelRemove.addEventListener('click', function() {
+                    removeModal.style.display = 'none';
+                });
+            }
+            
+            window.addEventListener('click', function(event) {
+                if (event.target == removeModal) {
+                    removeModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Modal de compartir invitación
+        const shareModal = document.getElementById('share-modal');
+        const inviteBtn = document.getElementById('copy-invite-btn');
+        const closeShareModal = document.querySelector('#share-modal .close-modal');
+        
+        if (shareModal && inviteBtn) {
+            inviteBtn.addEventListener('click', function() {
+                shareModal.style.display = 'flex';
+            });
+            
+            if (closeShareModal) {
+                closeShareModal.addEventListener('click', function() {
+                    shareModal.style.display = 'none';
+                });
+            }
+            
+            window.addEventListener('click', function(event) {
+                if (event.target == shareModal) {
+                    shareModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Copiar enlace en modal de compartir
+        const shareCopyBtn = document.getElementById('share-copy-btn');
+        const shareInvitationInput = document.getElementById('share-invitation-url');
+        
+        if (shareCopyBtn && shareInvitationInput) {
+            shareCopyBtn.addEventListener('click', function() {
+                shareInvitationInput.select();
+                document.execCommand('copy');
+                
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copiado';
+                
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Copiar mensaje sugerido
+        const copyMessageBtn = document.getElementById('copy-message-btn');
+        const shareMessage = document.getElementById('share-message');
+        
+        if (copyMessageBtn && shareMessage) {
+            copyMessageBtn.addEventListener('click', function() {
+                shareMessage.select();
+                document.execCommand('copy');
+                
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copiado';
+                
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Compartir por email
+        const emailShareBtn = document.getElementById('email-share-btn');
+        
+        if (emailShareBtn) {
+            emailShareBtn.addEventListener('click', function() {
+                const subject = encodeURIComponent('Únete a CipherCup - Mensajería segura');
+                const body = encodeURIComponent(`¡Hola! Te invito a unirte a CipherCup, una aplicación de mensajería segura. Usa mi enlace de invitación para conectar conmigo: {{ invitation_url }}`);
+                
+                window.location.href = `mailto:?subject=${subject}&body=${body}`;
+            });
+        }
+        
+        // Compartir por WhatsApp
+        const whatsappShareBtn = document.getElementById('whatsapp-share-btn');
+        
+        if (whatsappShareBtn) {
+            whatsappShareBtn.addEventListener('click', function() {
+                const text = encodeURIComponent(`¡Hola! Te invito a unirte a CipherCup, una aplicación de mensajería segura. Usa mi enlace de invitación para conectar conmigo: {{ invitation_url }}`);
+                
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+            });
+        }
+        
+        // Compartir por Telegram
+        const telegramShareBtn = document.getElementById('telegram-share-btn');
+        
+        if (telegramShareBtn) {
+            telegramShareBtn.addEventListener('click', function() {
+                const text = encodeURIComponent(`¡Hola! Te invito a unirte a CipherCup, una aplicación de mensajería segura. Usa mi enlace de invitación para conectar conmigo: {{ invitation_url }}`);
+                
+                window.open(`https://t.me/share/url?url={{ invitation_url }}&text=${encodeURIComponent('¡Hola! Te invito a unirte a CipherCup, una aplicación de mensajería segura. Usa mi enlace de invitación para conectar conmigo:')}`, '_blank');
+            });
+        }
+        
+        // Copiar al portapapeles
+        const clipboardBtn = document.getElementById('clipboard-btn');
+        
+        if (clipboardBtn) {
+            clipboardBtn.addEventListener('click', function() {
+                const text = `¡Hola! Te invito a unirte a CipherCup, una aplicación de mensajería segura. Usa mi enlace de invitación para conectar conmigo: {{ invitation_url }}`;
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Mensaje copiado al portapapeles');
+                }).catch(err => {
+                    console.error('Error al copiar al portapapeles:', err);
+                    alert('No se pudo copiar al portapapeles. Por favor, copia el texto manualmente.');
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

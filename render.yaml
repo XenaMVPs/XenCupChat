@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: ciphercup
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    healthCheckPath: /
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: app.py
+      - key: PYTHONUNBUFFERED
+        value: true
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    autoDeploy: true
+    
+    # Scaling configuration
+    numInstances:
+      min: 1
+      max: 1
+      # Set to 1 for basic plan. Can increase later if needed.
+    
+    # HTTPS configuration
+    domains:
+      - ciphercup.onrender.com  # Default domain provided by Render
+    
+    # Database plan - using SQLite with mounted disk
+    # No need to specify external DB since SQLite will be in /data directory
+    
+staticSites:
+  - name: ciphercup-assets
+    buildCommand: echo "No build needed for static assets"
+    publishDir: static
+    pullRequestPreviewsEnabled: false
+    
+    # Route static assets through CDN for better performance
+    routes:
+      - type: rewrite
+        source: /static/*
+        destination: /*

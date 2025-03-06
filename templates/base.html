@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CipherCup - Comunicación Segura{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- Meta tags for security -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; font-src https://cdnjs.cloudflare.com 'self'; img-src 'self' data:;">
+    <meta name="description" content="CipherCup - Plataforma de mensajería segura y anónima">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Header/Navigation -->
+    {% if session.user_id %}
+    <header class="app-header">
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i>
+            <h1>CipherCup</h1>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                <i class="fas fa-home"></i> Inicio
+            </a>
+            <a href="{{ url_for('chats') }}" class="nav-link {% if request.endpoint == 'chats' %}active{% endif %}">
+                <i class="fas fa-comments"></i> Chats
+            </a>
+            <a href="{{ url_for('contacts') }}" class="nav-link {% if request.endpoint == 'contacts' %}active{% endif %}">
+                <i class="fas fa-address-book"></i> Contactos
+            </a>
+        </nav>
+        
+        <div class="user-menu">
+            {% if session.user_id %}
+                <div class="user-menu-toggle">
+                    {% if current_user and current_user.profile_picture_path %}
+                        <img src="{{ url_for('static', filename=current_user.profile_picture_path) }}" alt="{{ session.username }}" class="user-avatar">
+                    {% else %}
+                        <div class="default-avatar">{{ session.username|first|upper }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('profile') }}" class="dropdown-item">
+                        <i class="fas fa-user"></i> Mi Perfil
+                    </a>
+                    <a href="{{ url_for('profile') }}#paranoia" class="dropdown-item">
+                        <i class="fas fa-user-secret"></i> Modo Paranoia
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="dropdown-item">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </header>
+    {% endif %}
+    
+    <!-- Flash Messages -->
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                        <button type="button" class="close-alert">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    {% if not session.user_id %}
+    <footer class="app-footer">
+        <div class="container">
+            <p>CipherCup &copy; {{ now.year }} - Comunicación segura y anónima</p>
+        </div>
+    </footer>
+    {% endif %}
+    
+    <!-- Common JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close alert messages
+            const closeButtons = document.querySelectorAll('.close-alert');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.parentElement.style.opacity = '0';
+                    setTimeout(() => {
+                        this.parentElement.style.display = 'none';
+                    }, 300);
+                });
+            });
+            
+            // User menu dropdown
+            const userMenuToggle = document.querySelector('.user-menu-toggle');
+            const dropdownMenu = document.querySelector('.dropdown-menu');
+            
+            if (userMenuToggle && dropdownMenu) {
+                userMenuToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('active');
+                });
+                
+                document.addEventListener('click', function(e) {
+                    if (!userMenuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                        dropdownMenu.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Auto-disappear flash messages after 5 seconds
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(alert => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 300);
+                });
+            }, 5000);
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

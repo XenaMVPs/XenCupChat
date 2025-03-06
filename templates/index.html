@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}CipherCup - Inicio{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <div class="welcome-panel">
+        <div class="welcome-header">
+            <h2 class="terminal-text">Bienvenido, {{ session.username }}</h2>
+            <p class="welcome-subtitle">Tu plataforma de comunicación segura y anónima</p>
+        </div>
+        
+        <div class="stats-cards">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="stat-data">
+                    <h3 class="stat-title">Chats Activos</h3>
+                    <p class="stat-value">{{ active_chats|default(0) }}</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-address-book"></i>
+                </div>
+                <div class="stat-data">
+                    <h3 class="stat-title">Contactos</h3>
+                    <p class="stat-value">{{ contacts_count|default(0) }}</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="stat-data">
+                    <h3 class="stat-title">Mensajes Nuevos</h3>
+                    <p class="stat-value">{{ unread_messages|default(0) }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <h3 class="section-title">Acciones Rápidas</h3>
+            <div class="actions-grid">
+                <a href="{{ url_for('chats') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="action-info">
+                        <h4 class="action-title">Ver Chats</h4>
+                        <p class="action-desc">Revisa tus conversaciones</p>
+                    </div>
+                </a>
+                
+                <a href="{{ url_for('contacts') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="action-info">
+                        <h4 class="action-title">Gestionar Contactos</h4>
+                        <p class="action-desc">Añade o elimina contactos</p>
+                    </div>
+                </a>
+                
+                <a href="{{ url_for('profile') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-user-cog"></i>
+                    </div>
+                    <div class="action-info">
+                        <h4 class="action-title">Editar Perfil</h4>
+                        <p class="action-desc">Actualiza tu información</p>
+                    </div>
+                </a>
+                
+                <a href="{{ url_for('profile') }}#paranoia" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-user-secret"></i>
+                    </div>
+                    <div class="action-info">
+                        <h4 class="action-title">Modo Paranoia</h4>
+                        <p class="action-desc">Configura mensajes autodestructibles</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        {% if recent_chats %}
+        <div class="recent-chats">
+            <h3 class="section-title">Conversaciones Recientes</h3>
+            <div class="chat-list">
+                {% for chat in recent_chats %}
+                <a href="{{ url_for('chat_view', partner_id=chat.user_id) }}" class="chat-item">
+                    <div class="chat-avatar-container">
+                        {% if chat.profile_picture_path %}
+                            <img src="{{ url_for('static', filename=chat.profile_picture_path) }}" alt="{{ chat.username }}" class="chat-avatar">
+                        {% else %}
+                            <div class="default-avatar">{{ chat.username|first|upper }}</div>
+                        {% endif %}
+                        {% if chat.is_online %}
+                            <div class="online-indicator"></div>
+                        {% endif %}
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">{{ chat.username }}</div>
+                        <div class="chat-preview">{{ chat.last_message|truncate(30) }}</div>
+                    </div>
+                    <div class="chat-meta">
+                        <div class="chat-time">{{ chat.last_message_time|time_ago }}</div>
+                        {% if chat.unread_count > 0 %}
+                            <div class="unread-badge">{{ chat.unread_count }}</div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            <div class="view-all">
+                <a href="{{ url_for('chats') }}" class="btn btn-outline">Ver todas las conversaciones</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-comments"></i>
+            <h3 class="empty-state-title">No tienes conversaciones activas</h3>
+            <p class="empty-state-message">Añade contactos y comienza a chatear de forma segura</p>
+            <a href="{{ url_for('contacts') }}" class="btn btn-primary">Gestionar Contactos</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="security-panel">
+        <div class="paranoia-status">
+            <h3 class="panel-title">Estado del Modo Paranoia</h3>
+            <div class="paranoia-indicator {% if user_paranoia_enabled %}enabled{% else %}disabled{% endif %}">
+                <i class="fas {% if user_paranoia_enabled %}fa-shield-alt{% else %}fa-shield{% endif %}"></i>
+                <span>Modo Paranoia {% if user_paranoia_enabled %}Activado{% else %}Desactivado{% endif %}</span>
+            </div>
+            {% if user_paranoia_enabled %}
+                <div class="paranoia-details">
+                    <p>Tus mensajes se autodestruirán después de <strong>{{ user_paranoia_duration }}</strong> segundos.</p>
+                    <a href="{{ url_for('profile') }}#paranoia" class="btn btn-sm btn-outline">Cambiar configuración</a>
+                </div>
+            {% else %}
+                <div class="paranoia-details">
+                    <p>Activa el Modo Paranoia para hacer que tus mensajes se autodestruyan.</p>
+                    <a href="{{ url_for('profile') }}#paranoia" class="btn btn-sm btn-outline">Activar Ahora</a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="invitation-box">
+            <h3 class="panel-title">Tu Enlace de Invitación</h3>
+            <p class="invitation-desc">Comparte este enlace para añadir contactos a tu red segura</p>
+            
+            <div class="invitation-link">
+                <input type="text" id="invitation-url" class="invitation-input" value="{{ invitation_url }}" readonly>
+                <button id="copy-btn" class="copy-btn" onclick="copyInvitationLink()">
+                    <i class="fas fa-copy"></i> Copiar
+                </button>
+            </div>
+            
+            <div class="qr-container">
+                <div id="qrcode" class="qrcode"></div>
+                <p class="qr-hint">Escanea con la cámara</p>
+            </div>
+        </div>
+        
+        <div class="security-tips">
+            <h3 class="panel-title">Tips de Seguridad</h3>
+            <ul class="tips-list">
+                <li class="tip-item">
+                    <i class="fas fa-lock"></i>
+                    <span>Usa contraseñas fuertes y únicas para tu cuenta</span>
+                </li>
+                <li class="tip-item">
+                    <i class="fas fa-user-secret"></i>
+                    <span>Activa el Modo Paranoia para conversaciones sensibles</span>
+                </li>
+                <li class="tip-item">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Cierra sesión cuando uses dispositivos compartidos</span>
+                </li>
+                <li class="tip-item">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>No compartas tu enlace de invitación públicamente</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Generate QR code for invitation link
+        const qrCode = new QRCode(document.getElementById("qrcode"), {
+            text: "{{ invitation_url }}",
+            width: 128,
+            height: 128,
+            colorDark : "#00ff9d",
+            colorLight : "#252836",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+        
+        // Matrix rain effect
+        function createMatrixRain() {
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix-code';
+            document.body.appendChild(matrix);
+            
+            const columns = Math.floor(window.innerWidth / 20);
+            
+            for (let i = 0; i < columns; i++) {
+                const column = document.createElement('div');
+                column.className = 'matrix-column';
+                column.style.left = i * 20 + 'px';
+                column.innerHTML = createRandomCharacters(30);
+                column.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                column.style.opacity = Math.random() * 0.5 + 0.3;
+                matrix.appendChild(column);
+                
+                setInterval(() => {
+                    column.innerHTML = createRandomCharacters(30);
+                }, 2000);
+            }
+        }
+        
+        function createRandomCharacters(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return result;
+        }
+        
+        // Uncomment to enable matrix effect
+        // createMatrixRain();
+        
+        // Check for new messages periodically
+        function checkForNewMessages() {
+            fetch('/messages/check?last_seen=' + encodeURIComponent(new Date().toISOString()))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.messages && data.messages.length > 0) {
+                        showNotification(`Tienes ${data.messages.length} nuevos mensajes`);
+                    }
+                })
+                .catch(error => console.error('Error checking messages:', error));
+        }
+        
+        function showNotification(message) {
+            // Show notification if browser supports it
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification('CipherCup', { body: message });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification('CipherCup', { body: message });
+                        }
+                    });
+                }
+            }
+            
+            // Also show in-app notification
+            const flashMessages = document.querySelector('.flash-messages');
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-info';
+            alert.innerHTML = message + '<button type="button" class="close-alert">&times;</button>';
+            flashMessages.appendChild(alert);
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                setTimeout(() => {
+                    alert.remove();
+                }, 300);
+            }, 5000);
+            
+            // Allow closing
+            alert.querySelector('.close-alert').addEventListener('click', function() {
+                alert.style.opacity = '0';
+                setTimeout(() => {
+                    alert.remove();
+                }, 300);
+            });
+        }
+        
+        // Check for messages every 30 seconds
+        setInterval(checkForNewMessages, 30000);
+        
+        // Initial check
+        checkForNewMessages();
+    });
+    
+    // Copy invitation link
+    function copyInvitationLink() {
+        const invitationInput = document.getElementById('invitation-url');
+        invitationInput.select();
+        document.execCommand('copy');
+        
+        const copyBtn = document.getElementById('copy-btn');
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copiado';
+        
+        setTimeout(() => {
+            copyBtn.innerHTML = originalText;
+        }, 2000);
+    }
+</script>
+{% endblock %}

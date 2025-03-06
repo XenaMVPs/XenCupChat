@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CipherCup | Registro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- Meta tags for security -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; font-src https://cdnjs.cloudflare.com 'self'; img-src 'self' data:;">
+    <meta name="description" content="CipherCup - Registro para mensajería segura y anónima">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>CipherCup</h1>
+            </div>
+            <p class="tagline">Crea tu cuenta segura</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                        <button type="button" class="close-alert">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-container">
+            <h2 class="terminal-text">Nuevo Usuario</h2>
+            
+            <form action="{{ url_for('register') }}" method="post" id="register-form" enctype="multipart/form-data">
+                <!-- Hidden input for invitation if present -->
+                {% if invitation_link %}
+                <input type="hidden" name="invitation_link" value="{{ invitation_link }}">
+                {% endif %}
+                
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i>
+                        Nombre de Usuario
+                    </label>
+                    <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+                    <p class="form-hint">Este será tu identificador único en CipherCup</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Contraseña
+                    </label>
+                    <div class="password-input">
+                        <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
+                        <button type="button" class="toggle-password" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <p class="form-hint">Mínimo 8 caracteres, incluye letras, números y símbolos para mayor seguridad</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm-password">
+                        <i class="fas fa-lock"></i>
+                        Confirmar Contraseña
+                    </label>
+                    <div class="password-input">
+                        <input type="password" id="confirm-password" name="confirm_password" required autocomplete="new-password" minlength="8">
+                        <button type="button" class="toggle-password" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="profile-picture">
+                        <i class="fas fa-image"></i>
+                        Foto de Perfil (Opcional)
+                    </label>
+                    <div class="file-input-container">
+                        <input type="file" id="profile-picture" name="profile_picture" accept="image/*" class="file-input">
+                        <div class="file-input-placeholder">
+                            <i class="fas fa-upload"></i>
+                            <span id="file-name">Seleccionar imagen...</span>
+                        </div>
+                    </div>
+                    <p class="form-hint">Formatos aceptados: JPG, PNG, GIF. Máximo 5MB.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bio">
+                        <i class="fas fa-comment-alt"></i>
+                        Biografía (Opcional)
+                    </label>
+                    <textarea id="bio" name="bio" maxlength="150" placeholder="Cuéntanos un poco sobre ti (máx. 150 caracteres)"></textarea>
+                    <div class="char-counter">
+                        <span id="char-count">0</span>/150
+                    </div>
+                </div>
+                
+                <div class="form-options">
+                    <div class="paranoia-preview">
+                        <h3 class="option-title">
+                            <i class="fas fa-user-secret"></i> Modo Paranoia
+                        </h3>
+                        <p class="option-description">
+                            El Modo Paranoia permite que tus mensajes se autodestruyan después de un tiempo configurable. 
+                            Podrás activarlo luego en tu perfil.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i>
+                        Crear Cuenta
+                    </button>
+                </div>
+            </form>
+            
+            <div class="form-footer">
+                <p>¿Ya tienes una cuenta? <a href="{{ url_for('login') }}">Inicia sesión</a></p>
+            </div>
+        </div>
+        
+        <div class="login-footer">
+            <p>CipherCup &copy; {{ now.year }} - Comunicación segura y anónima</p>
+            <div class="security-badges">
+                <span><i class="fas fa-lock"></i> Encriptado</span>
+                <span><i class="fas fa-user-secret"></i> Anónimo</span>
+                <span><i class="fas fa-shield-alt"></i> Seguro</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Matrix background effect (uncomment to enable) -->
+    <!-- <div class="matrix-code"></div> -->
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close alert messages
+            const closeButtons = document.querySelectorAll('.close-alert');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.parentElement.style.opacity = '0';
+                    setTimeout(() => {
+                        this.parentElement.style.display = 'none';
+                    }, 300);
+                });
+            });
+            
+            // Password visibility toggle
+            const togglePasswordButtons = document.querySelectorAll('.toggle-password');
+            togglePasswordButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const input = this.previousElementSibling;
+                    const icon = this.querySelector('i');
+                    
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+            
+            // File input visual enhancement
+            const fileInput = document.getElementById('profile-picture');
+            const fileName = document.getElementById('file-name');
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files.length > 0) {
+                        fileName.textContent = this.files[0].name;
+                        
+                        // Simple file size validation
+                        if (this.files[0].size > 5 * 1024 * 1024) {
+                            alert('La imagen es demasiado grande. El tamaño máximo es 5MB.');
+                            this.value = '';
+                            fileName.textContent = 'Seleccionar imagen...';
+                        }
+                    } else {
+                        fileName.textContent = 'Seleccionar imagen...';
+                    }
+                });
+            }
+            
+            // Character counter for bio
+            const bioInput = document.getElementById('bio');
+            const charCount = document.getElementById('char-count');
+            
+            if (bioInput && charCount) {
+                bioInput.addEventListener('input', function() {
+                    const currentLength = this.value.length;
+                    charCount.textContent = currentLength;
+                    
+                    if (currentLength > 130) {
+                        charCount.classList.add('text-warning');
+                    } else {
+                        charCount.classList.remove('text-warning');
+                    }
+                    
+                    if (currentLength > 145) {
+                        charCount.classList.add('text-danger');
+                    } else {
+                        charCount.classList.remove('text-danger');
+                    }
+                });
+            }
+            
+            // Form validation
+            const registerForm = document.getElementById('register-form');
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirm-password');
+            
+            if (registerForm) {
+                registerForm.addEventListener('submit', function(event) {
+                    if (password.value !== confirmPassword.value) {
+                        event.preventDefault();
+                        alert('Las contraseñas no coinciden. Por favor, verifica que sean iguales.');
+                    }
+                });
+            }
+            
+            // Matrix code rain effect (uncomment to enable)
+            /*
+            function createMatrixRain() {
+                const matrix = document.querySelector('.matrix-code');
+                if (!matrix) return;
+                
+                const columns = Math.floor(window.innerWidth / 20);
+                
+                for (let i = 0; i < columns; i++) {
+                    const column = document.createElement('div');
+                    column.className = 'matrix-column';
+                    column.style.left = i * 20 + 'px';
+                    column.innerHTML = createRandomCharacters(30);
+                    column.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                    column.style.opacity = Math.random() * 0.5 + 0.3;
+                    matrix.appendChild(column);
+                    
+                    setInterval(() => {
+                        column.innerHTML = createRandomCharacters(30);
+                    }, 2000);
+                }
+            }
+            
+            function createRandomCharacters(length) {
+                let result = '';
+                const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+                for (let i = 0; i < length; i++) {
+                    result += characters.charAt(Math.floor(Math.random() * characters.length));
+                }
+                return result;
+            }
+            
+            createMatrixRain();
+            */
+            
+            // Check for invitation in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const invitation = urlParams.get('invitation');
+            
+            if (invitation) {
+                // Store invitation in a hidden field
+                const invitationInput = document.createElement('input');
+                invitationInput.type = 'hidden';
+                invitationInput.name = 'invitation_link';
+                invitationInput.value = invitation;
+                registerForm.appendChild(invitationInput);
+                
+                // Show a message that they're being invited
+                const alertContainer = document.querySelector('.login-header');
+                const invitationAlert = document.createElement('div');
+                invitationAlert.className = 'alert alert-info';
+                invitationAlert.textContent = 'Has sido invitado a unirte a CipherCup. Completa tu registro para conectar con tu contacto.';
+                alertContainer.after(invitationAlert);
+            }
+        });
+    </script>
+</body>
+</html>

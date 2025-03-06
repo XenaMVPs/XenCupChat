@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}CipherCup - Chats{% endblock %}
+
+{% block content %}
+<div class="chat-page-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title terminal-text">Mis Conversaciones</h2>
+            <button class="btn btn-icon new-chat-btn" id="new-chat-btn" title="Nueva conversación">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-search">
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="chat-search" class="search-input" placeholder="Buscar en conversaciones...">
+            </div>
+        </div>
+
+        <div class="sidebar-content">
+            {% if chats and chats|length > 0 %}
+                <div class="chat-list">
+                    {% for chat in chats %}
+                        <a href="{{ url_for('chat_view', partner_id=chat.user_id) }}" class="chat-item {% if 'partner_id' in request.view_args and request.view_args.partner_id == chat.user_id %}active{% endif %}">
+                            <div class="chat-avatar-container">
+                                {% if chat.profile_picture_path %}
+                                    <img src="{{ url_for('static', filename=chat.profile_picture_path) }}" alt="{{ chat.username }}" class="chat-avatar">
+                                {% else %}
+                                    <div class="default-avatar">{{ chat.username|first|upper }}</div>
+                                {% endif %}
+                                {% if chat.is_online %}
+                                    <div class="online-indicator"></div>
+                                {% endif %}
+                            </div>
+                            <div class="chat-info">
+                                <div class="chat-name">{{ chat.username }}</div>
+                                <div class="chat-preview">{{ chat.last_message|truncate(30) if chat.last_message else 'Sin mensajes' }}</div>
+                            </div>
+                            <div class="chat-meta">
+                                <div class="chat-time">{{ chat.last_message_time|time_ago if chat.last_message_time else '' }}</div>
+                                {% if chat.unread_count > 0 %}
+                                    <div class="unread-badge">{{ chat.unread_count }}</div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-comments"></i>
+                    <h3 class="empty-state-title">No tienes conversaciones activas</h3>
+                    <p class="empty-state-message">Comienza a chatear con tus contactos para ver tus conversaciones aquí.</p>
+                    <a href="{{ url_for('contacts') }}" class="btn btn-primary">Ver Contactos</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('index') }}" class="footer-btn" title="Inicio">
+                <i class="fas fa-home"></i>
+            </a>
+            <a href="{{ url_for('contacts') }}" class="footer-btn" title="Contactos">
+                <i class="fas fa-address-book"></i>
+            </a>
+            <a href="{{ url_for('profile') }}" class="footer-btn" title="Perfil">
+                <i class="fas fa-user"></i>
+            </a>
+            <a href="{{ url_for('profile') }}#paranoia" class="footer-btn" title="Modo Paranoia">
+                <i class="fas fa-user-secret"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="main-chat-placeholder">
+        <div class="placeholder-content">
+            <i class="fas fa-comments placeholder-icon"></i>
+            <h2 class="placeholder-title">Selecciona una conversación</h2>
+            <p class="placeholder-desc">Elige un chat de la lista para empezar a conversar o inicia una nueva conversación.</p>
+            
+            {% if chats and chats|length > 0 %}
+                <div class="quick-actions">
+                    <h3>Contactos recientes</h3>
+                    <div class="quick-contacts">
+                        {% for chat in chats[:5] %}
+                            <a href="{{ url_for('chat_view', partner_id=chat.user_id) }}" class="quick-contact">
+                                {% if chat.profile_picture_path %}
+                                    <img src="{{ url_for('static', filename=chat.profile_picture_path) }}" alt="{{ chat.username }}" class="quick-avatar">
+                                {% else %}
+                                    <div class="quick-default-avatar">{{ chat.username|first|upper }}</div>
+                                {% endif %}
+                                <span class="quick-name">{{ chat.username }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <a href="{{ url_for('contacts') }}" class="btn btn-primary mt-4">
+                    <i class="fas fa-user-plus"></i> Añadir Contactos
+                </a>
+            {% endif %}
+        </div>
+        
+        <div class="security-reminder">
+            <div class="reminder-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="reminder-content">
+                <h3>Comunicación Segura</h3>
+                <p>Tus mensajes están protegidos. Recuerda que puedes activar el Modo Paranoia en tu perfil para hacer que tus mensajes se autodestruyan.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para nueva conversación -->
+<div id="new-chat-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Nueva Conversación</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="search-container mb-3">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="contact-search" class="search-input" placeholder="Buscar contactos...">
+            </div>
+            
+            <div id="search-results" class="search-results">
+                <!-- Los resultados de búsqueda se cargarán aquí dinámicamente -->
+                <div class="loading-indicator d-none">
+                    <i class="fas fa-spinner rotate-360"></i>
+                    <span>Buscando contactos...</span>
+                </div>
+                <div class="initial-state">
+                    <p>Comienza a escribir para buscar contactos</p>
+                </div>
+                <div class="no-results d-none">
+                    <p>No se encontraron contactos con ese nombre</p>
+                </div>
+                <div class="results-list">
+                    <!-- Los resultados se añadirán aquí -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Búsqueda en chats
+        const chatSearch = document.getElementById('chat-search');
+        const chatItems = document.querySelectorAll('.chat-item');
+        
+        if (chatSearch) {
+            chatSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                chatItems.forEach(item => {
+                    const chatName = item.querySelector('.chat-name').textContent.toLowerCase();
+                    const chatPreview = item.querySelector('.chat-preview').textContent.toLowerCase();
+                    
+                    if (chatName.includes(searchTerm) || chatPreview.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Modal de nueva conversación
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const newChatModal = document.getElementById('new-chat-modal');
+        const closeModal = document.querySelector('.close-modal');
+        const contactSearch = document.getElementById('contact-search');
+        const searchResults = document.getElementById('search-results');
+        const loadingIndicator = document.querySelector('.loading-indicator');
+        const initialState = document.querySelector('.initial-state');
+        const noResults = document.querySelector('.no-results');
+        const resultsList = document.querySelector('.results-list');
+        
+        if (newChatBtn && newChatModal) {
+            newChatBtn.addEventListener('click', function() {
+                newChatModal.style.display = 'flex';
+                contactSearch.focus();
+            });
+            
+            closeModal.addEventListener('click', function() {
+                newChatModal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target == newChatModal) {
+                    newChatModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Búsqueda de contactos para nueva conversación
+        if (contactSearch) {
+            let searchTimeout;
+            
+            contactSearch.addEventListener('input', function() {
+                const searchTerm = this.value.trim();
+                
+                // Limpiar timeout anterior
+                clearTimeout(searchTimeout);
+                
+                // Si hay menos de 2 caracteres, mostrar estado inicial
+                if (searchTerm.length < 2) {
+                    initialState.classList.remove('d-none');
+                    loadingIndicator.classList.add('d-none');
+                    noResults.classList.add('d-none');
+                    resultsList.innerHTML = '';
+                    return;
+                }
+                
+                // Mostrar indicador de carga
+                loadingIndicator.classList.remove('d-none');
+                initialState.classList.add('d-none');
+                noResults.classList.add('d-none');
+                
+                // Esperar 300ms antes de buscar para evitar muchas peticiones
+                searchTimeout = setTimeout(function() {
+                    fetch(`/api/search-users?q=${encodeURIComponent(searchTerm)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            loadingIndicator.classList.add('d-none');
+                            
+                            if (data.length === 0) {
+                                noResults.classList.remove('d-none');
+                                resultsList.innerHTML = '';
+                            } else {
+                                noResults.classList.add('d-none');
+                                renderSearchResults(data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error searching users:', error);
+                            loadingIndicator.classList.add('d-none');
+                        });
+                }, 300);
+            });
+            
+            function renderSearchResults(users) {
+                resultsList.innerHTML = '';
+                
+                users.forEach(user => {
+                    const userItem = document.createElement('div');
+                    userItem.className = 'search-result-item';
+                    
+                    let avatarHtml = '';
+                    if (user.profile_picture) {
+                        avatarHtml = `<img src="${user.profile_picture}" alt="${user.username}" class="result-avatar">`;
+                    } else {
+                        avatarHtml = `<div class="result-default-avatar">${user.username.charAt(0).toUpperCase()}</div>`;
+                    }
+                    
+                    userItem.innerHTML = `
+                        <div class="result-avatar-container">
+                            ${avatarHtml}
+                        </div>
+                        <div class="result-info">
+                            <div class="result-name">${user.username}</div>
+                        </div>
+                        <a href="/chat/${user.id}" class="btn btn-sm btn-primary">Chatear</a>
+                    `;
+                    
+                    resultsList.appendChild(userItem);
+                });
+            }
+        }
+        
+        // Efectos visuales para mejorar la experiencia
+        const chatItems = document.querySelectorAll('.chat-item');
+        chatItems.forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                this.classList.add('hover-effect');
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.classList.remove('hover-effect');
+            });
+        });
+    });
+</script>
+{% endblock %}

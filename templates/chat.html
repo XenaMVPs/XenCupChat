@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Chat con {{ partner.username }} | CipherCup{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-interface-container">
+        <div class="chat-header">
+            <a href="{{ url_for('chats') }}" class="back-to-chats">
+                <i class="fas fa-chevron-left"></i>
+                <span>Chats</span>
+            </a>
+            
+            {% if partner.profile_picture_path %}
+                <img src="{{ url_for('static', filename=partner.profile_picture_path) }}" alt="{{ partner.username }}" class="chat-partner-avatar">
+            {% else %}
+                <div class="default-avatar chat-partner-avatar">{{ partner.username|first|upper }}</div>
+            {% endif %}
+            
+            <div class="chat-partner-info">
+                <div class="chat-partner-name">{{ partner.username }}</div>
+                <div class="chat-partner-status" id="partner-status">
+                    <span id="status-indicator">Cargando estado...</span>
+                </div>
+            </div>
+            
+            <div class="chat-actions">
+                <button class="chat-action-btn" id="profile-btn" title="Ver perfil">
+                    <i class="fas fa-user"></i>
+                </button>
+                <button class="chat-action-btn" id="paranoia-info-btn" title="Información de modo paranoia">
+                    <i class="fas fa-user-secret"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="chat-messages" class="chat-messages-container">
+            <!-- Los mensajes se cargarán aquí, pero en orden inverso -->
+            {% if messages|length > 0 %}
+                {% set current_day = None %}
+                {% set messages_by_date = {} %}
+                
+                <!-- Agrupar mensajes por día -->
+                {% for message in messages %}
+                    {% set message_date = message.timestamp.split(' ')[0] if ' ' in message.timestamp else message.timestamp.split('T')[0] %}
+                    {% if message_date not in messages_by_date %}
+                        {% set messages_by_date = messages_by_date|merge({message_date: []}) %}
+                    {% endif %}
+                    {% set _ = messages_by_date[message_date].append(message) %}
+                {% endfor %}
+                
+                <!-- Mostrar mensajes agrupados por día -->
+                {% for date, day_messages in messages_by_date|dictsort %}
+                    <div class="day-messages-group">
+                        <div class="day-divider">{{ date|date_format }}</div>
+                        
+                        <div class="messages-group">
+                            {% for message in day_messages %}
+                                <div class="message-wrapper {{ 'sent' if message.sender_id == session.user_id else 'received' }}" 
+                                     data-id="{{ message.message_id }}" 
+                                     {% if message.paranoia_mode_enabled and message.destruction_time %}
+                                     data-paranoia="true" 
+                                     data-destruction-time="{{ message.destruction_time }}"
+                                     {% endif %}>
+                                    
+                                    <div class="message-bubble {{ 'sent' if message.sender_id == session.user_id else 'received' }}">
+                                        <div class="message-text">{{ message.message_text }}</div>
+                                        
+                                        <div class="message-meta">
+                                            {% if message.paranoia_mode_enabled and message.destruction_time %}
+                                                <div class="paranoia-indicator">
+                                                    <i class="fas fa-clock"></i>
+                                                    <span class="destruction-timer" data-time="{{ message.destruction_time }}">
+                                                        Calculando...
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <div class="message-time">{{ message.timestamp|time_ago }}</div>
+                                            
+                                            {% if message.sender_id == session.user_id %}
+                                                <div class="message-status">
+                                                    <i class="fas fa-check-double"></i>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-chat">
+                    <div class="empty-chat-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3 class="empty-chat-title">No hay mensajes aún</h3>
+                    <p class="empty-chat-message">Envía un mensaje para comenzar la conversación con {{ partner.username }}</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="message-input-container">
+            <form id="message-form" class="message-input-form">
+                <textarea id="message-input" class="message-input" placeholder="Escribe un mensaje..." rows="1"></textarea>
+                
+                <div class="message-actions">
+                    <button type="button" class="message-action-btn" id="emoji-btn" title="Insertar emoji">
+                        <i class="far fa-smile"></i>
+                    </button>
+                </div>
+                
+                <button type="submit" class="send-btn" id="send-btn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+            
+            {% if user_paranoia_enabled %}
+                <div class="paranoia-mode-indicator">
+                    <i class="fas fa-user-secret"></i>
+                    <span>Modo Paranoia activo: Los mensajes se autodestruirán en {{ user_paranoia_duration }} segundos</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de información sobre paranoia mode -->
+<div id="paranoia-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Información de Modo Paranoia</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="paranoia-info-container">
+                <div class="paranoia-icon">
+                    <i class="fas fa-user-secret"></i>
+                </div>
+                
+                <div class="paranoia-status-section">
+                    <h4>Tu modo paranoia</h4>
+                    <div class="paranoia-status {% if user_paranoia_enabled %}enabled{% else %}disabled{% endif %}">
+                        <i class="fas {% if user_paranoia_enabled %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+                        <span>{{ 'Activado' if user_paranoia_enabled else 'Desactivado' }}</span>
+                    </div>
+                    
+                    {% if user_paranoia_enabled %}
+                        <p class="paranoia-description">Tus mensajes se autodestruirán después de {{ user_paranoia_duration }} segundos.</p>
+                    {% else %}
+                        <p class="paranoia-description">Tus mensajes no se autodestruirán.</p>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('profile') }}#paranoia" class="btn btn-sm btn-outline">Cambiar configuración</a>
+                </div>
+                
+                <div class="paranoia-info-section">
+                    <h4>¿Qué es el Modo Paranoia?</h4>
+                    <p>El Modo Paranoia hace que tus mensajes se autodestruyan después de un tiempo que tú elijas. Cuando está activado, todos tus mensajes enviados tendrán esta característica, independientemente del chat.</p>
+                    <p>Si ves el icono <i class="fas fa-clock"></i> junto a un mensaje, significa que se autodestruirá.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatMessages = document.getElementById('chat-messages');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const paranoiaBtn = document.getElementById('paranoia-info-btn');
+        const paranoiaModal = document.getElementById('paranoia-modal');
+        const closeModal = document.querySelector('.close-modal');
+        const partnerId = {{ partner.user_id }};
+        const statusIndicator = document.getElementById('status-indicator');
+        
+        // Función para habilitar/deshabilitar botón de enviar según contenido
+        messageInput.addEventListener('input', function() {
+            sendBtn.disabled = !this.value.trim();
+            
+            // Auto-resize del textarea
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        });
+        
+        // Enviar mensaje
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const messageText = messageInput.value.trim();
+            
+            if (!messageText) return;
+            
+            sendMessage(messageText);
+        });
+        
+        // Función para enviar mensajes
+        function sendMessage(messageText) {
+            // Deshabilitar formulario durante el envío
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            
+            fetch(`/chat/${partnerId}/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `message=${encodeURIComponent(messageText)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Limpiar y resetear el textarea
+                    messageInput.value = '';
+                    messageInput.style.height = 'auto';
+                    
+                    // Crear y añadir el nuevo mensaje al chat
+                    addNewMessage(data.message_id, messageText, new Date().toISOString(), 
+                                 data.paranoia_enabled, data.destruction_time);
+                    
+                    // Scroll al final del chat
+                    setTimeout(() => {
+                        chatMessages.scrollTop = 0;
+                    }, 100);
+                } else {
+                    alert('Error al enviar mensaje: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                alert('Error al enviar mensaje. Por favor intenta nuevamente.');
+            })
+            .finally(() => {
+                // Re-habilitar formulario
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.focus();
+            });
+        }
+        
+        // Función para añadir un nuevo mensaje al chat
+        function addNewMessage(messageId, text, timestamp, isParanoia, destructionTime) {
+            // Crear fecha del mensaje
+            const messageDate = timestamp.split('T')[0];
+            
+            // Buscar o crear grupo de mensajes para esta fecha
+            let dayGroup = document.querySelector(`.day-messages-group`);
+            if (!dayGroup) {
+                dayGroup = document.createElement('div');
+                dayGroup.className = 'day-messages-group';
+                dayGroup.innerHTML = `
+                    <div class="day-divider">Hoy</div>
+                    <div class="messages-group"></div>
+                `;
+                chatMessages.prepend(dayGroup);
+            }
+            
+            const messagesGroup = dayGroup.querySelector('.messages-group');
+            
+            // Crear elemento de mensaje
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message-wrapper sent';
+            messageElement.dataset.id = messageId;
+            
+            // Añadir atributos de paranoia si es necesario
+            if (isParanoia && destructionTime) {
+                messageElement.dataset.paranoia = 'true';
+                messageElement.dataset.destructionTime = destructionTime;
+            }
+            
+            // Calcular tiempo restante para destrucción
+            let destructionTimer = '';
+            if (isParanoia && destructionTime) {
+                const now = new Date();
+                const destroyTime = new Date(destructionTime);
+                const secondsLeft = Math.round((destroyTime - now) / 1000);
+                
+                destructionTimer = `
+                    <div class="paranoia-indicator">
+                        <i class="fas fa-clock"></i>
+                        <span class="destruction-timer" data-time="${destructionTime}">
+                            ${secondsLeft}s
+                        </span>
+                    </div>
+                `;
+            }
+            
+            // Crear HTML del mensaje
+            messageElement.innerHTML = `
+                <div class="message-bubble sent">
+                    <div class="message-text">${text}</div>
+                    <div class="message-meta">
+                        ${destructionTimer}
+                        <div class="message-time">ahora mismo</div>
+                        <div class="message-status">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Añadir mensaje al grupo
+            messagesGroup.prepend(messageElement);
+            
+            // Si es un mensaje con autodestrucción, iniciar temporizador
+            if (isParanoia && destructionTime) {
+                startDestructionTimer(messageElement);
+            }
+        }
+        
+        // Inicializar timers de destrucción para mensajes con paranoia
+        document.querySelectorAll('[data-paranoia="true"]').forEach(message => {
+            startDestructionTimer(message);
+        });
+        
+        // Función para iniciar el temporizador de destrucción
+        function startDestructionTimer(messageElement) {
+            const destructionTime = messageElement.dataset.destructionTime;
+            if (!destructionTime) return;
+            
+            const timerDisplay = messageElement.querySelector('.destruction-timer');
+            if (!timerDisplay) return;
+            
+            const updateTimer = () => {
+                const now = new Date();
+                const destroyTime = new Date(destructionTime);
+                const secondsLeft = Math.round((destroyTime - now) / 1000);
+                
+                if (secondsLeft <= 0) {
+                    // El mensaje debería ser eliminado por el servidor
+                    messageElement.classList.add('message-expiring');
+                    timerDisplay.textContent = 'Expirando...';
+                    
+                    // Intentar remover el mensaje después de un breve tiempo
+                    setTimeout(() => {
+                        messageElement.remove();
+                    }, 5000);
+                    
+                    clearInterval(interval);
+                } else {
+                    timerDisplay.textContent = `${secondsLeft}s`;
+                    
+                    // Añadir clase de expirando en los últimos 5 segundos
+                    if (secondsLeft <= 5) {
+                        messageElement.classList.add('message-expiring');
+                    }
+                }
+            };
+            
+            // Actualizar inmediatamente y luego cada segundo
+            updateTimer();
+            const interval = setInterval(updateTimer, 1000);
+            
+            // Guardar el interval ID para poder limpiarlo si el elemento se elimina
+            messageElement.dataset.timerId = interval;
+        }
+        
+        // Verificar periódicamente nuevos mensajes y mensajes expirados
+        function checkMessages() {
+            const lastCheck = localStorage.getItem('lastMessageCheck') || '1970-01-01';
+            
+            fetch(`/messages/check?last_seen=${lastCheck}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Actualizar timestamp del último chequeo
+                    localStorage.setItem('lastMessageCheck', new Date().toISOString());
+                    
+                    // Procesar nuevos mensajes
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach(msg => {
+                            // Solo procesar mensajes de este chat
+                            if (msg.sender_id == partnerId) {
+                                addReceivedMessage(msg);
+                            }
+                        });
+                    }
+                    
+                    // Procesar mensajes expirados
+                    if (data.expired_messages && data.expired_messages.length > 0) {
+                        data.expired_messages.forEach(messageId => {
+                            const expiredMsg = document.querySelector(`.message-wrapper[data-id="${messageId}"]`);
+                            if (expiredMsg) {
+                                expiredMsg.remove();
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking messages:', error);
+                });
+        }
+        
+        // Función para añadir un mensaje recibido
+        function addReceivedMessage(message) {
+            // Crear fecha del mensaje
+            const messageDate = message.timestamp.split('T')[0];
+            
+            // Buscar o crear grupo de mensajes para esta fecha
+            let dayGroup = document.querySelector(`.day-messages-group`);
+            if (!dayGroup) {
+                dayGroup = document.createElement('div');
+                dayGroup.className = 'day-messages-group';
+                dayGroup.innerHTML = `
+                    <div class="day-divider">Hoy</div>
+                    <div class="messages-group"></div>
+                `;
+                chatMessages.prepend(dayGroup);
+            }
+            
+            const messagesGroup = dayGroup.querySelector('.messages-group');
+            
+            // Verificar si el mensaje ya existe
+            if (document.querySelector(`.message-wrapper[data-id="${message.id}"]`)) {
+                return; // Evitar duplicados
+            }
+            
+            // Crear elemento de mensaje
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message-wrapper received';
+            messageElement.dataset.id = message.id;
+            
+            // Añadir atributos de paranoia si es necesario
+            if (message.paranoia_enabled && message.destruction_time) {
+                messageElement.dataset.paranoia = 'true';
+                messageElement.dataset.destructionTime = message.destruction_time;
+            }
+            
+            // Calcular tiempo restante para destrucción
+            let destructionTimer = '';
+            if (message.paranoia_enabled && message.destruction_time) {
+                const now = new Date();
+                const destroyTime = new Date(message.destruction_time);
+                const secondsLeft = Math.round((destroyTime - now) / 1000);
+                
+                destructionTimer = `
+                    <div class="paranoia-indicator">
+                        <i class="fas fa-clock"></i>
+                        <span class="destruction-timer" data-time="${message.destruction_time}">
+                            ${secondsLeft}s
+                        </span>
+                    </div>
+                `;
+            }
+            
+            // Crear HTML del mensaje
+            messageElement.innerHTML = `
+                <div class="message-bubble received">
+                    <div class="message-text">${message.text}</div>
+                    <div class="message-meta">
+                        ${destructionTimer}
+                        <div class="message-time">ahora mismo</div>
+                    </div>
+                </div>
+            `;
+            
+            // Añadir mensaje al grupo
+            messagesGroup.prepend(messageElement);
+            
+            // Si es un mensaje con autodestrucción, iniciar temporizador
+            if (message.paranoia_enabled && message.destruction_time) {
+                startDestructionTimer(messageElement);
+            }
+            
+            // Scroll al final del chat y reproducir sonido
+            setTimeout(() => {
+                chatMessages.scrollTop = 0;
+                playMessageSound();
+            }, 100);
+        }
+        
+        // Función para reproducir sonido de mensaje recibido
+        function playMessageSound() {
+            // Implementar sonido si se desea
+        }
+        
+        // Verificar estado online del usuario
+        function checkOnlineStatus() {
+            fetch(`/api/user-status/${partnerId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_online) {
+                        statusIndicator.textContent = 'En línea';
+                        statusIndicator.parentElement.classList.add('online');
+                    } else {
+                        const lastSeen = data.last_active ? `Últ. vez ${data.last_active}` : 'Desconectado';
+                        statusIndicator.textContent = lastSeen;
+                        statusIndicator.parentElement.classList.remove('online');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking online status:', error);
+                    statusIndicator.textContent = 'Estado desconocido';
+                });
+        }
+        
+        // Manejo del modal de paranoia
+        if (paranoiaBtn && paranoiaModal && closeModal) {
+            paranoiaBtn.addEventListener('click', function() {
+                paranoiaModal.style.display = 'flex';
+            });
+            
+            closeModal.addEventListener('click', function() {
+                paranoiaModal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target == paranoiaModal) {
+                    paranoiaModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Iniciar con scroll al final del chat
+        chatMessages.scrollTop = 0;
+        
+        // Iniciar verificación periódica de mensajes
+        setInterval(checkMessages, 3000);
+        
+        // Verificar estado online inicial y luego cada 30 segundos
+        checkOnlineStatus();
+        setInterval(checkOnlineStatus, 30000);
+        
+        // Enfoque inicial en el campo de entrada
+        messageInput.focus();
+    });
+</script>
+{% endblock %}

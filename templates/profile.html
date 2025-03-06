@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+
+{% block title %}CipherCup - Mi Perfil{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-avatar-container">
+            {% if user.profile_picture_path %}
+                <img src="{{ url_for('static', filename=user.profile_picture_path) }}" alt="{{ user.username }}" class="profile-avatar">
+            {% else %}
+                <div class="profile-avatar default-avatar">{{ user.username|first|upper }}</div>
+            {% endif %}
+            <label for="profile-picture-upload" class="avatar-edit-btn" title="Cambiar foto de perfil">
+                <i class="fas fa-camera"></i>
+            </label>
+        </div>
+        
+        <div class="profile-info">
+            <h2 class="profile-name terminal-text">{{ user.username }}</h2>
+            <p class="profile-username">@{{ user.username }}</p>
+            <p class="profile-bio">{{ user.bio or 'Sin biografía' }}</p>
+            
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="contacts-count">...</div>
+                    <div class="stat-label">Contactos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="messages-count">...</div>
+                    <div class="stat-label">Mensajes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ user.created_at|date_format }}</div>
+                    <div class="stat-label">Miembro desde</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="profile-tabs">
+        <button class="tab-btn active" data-tab="profile-edit">
+            <i class="fas fa-user-edit"></i> Editar Perfil
+        </button>
+        <button class="tab-btn" data-tab="security">
+            <i class="fas fa-lock"></i> Seguridad
+        </button>
+        <button class="tab-btn" data-tab="paranoia" id="paranoia-tab">
+            <i class="fas fa-user-secret"></i> Modo Paranoia
+        </button>
+        <button class="tab-btn" data-tab="invite">
+            <i class="fas fa-user-plus"></i> Invitaciones
+        </button>
+    </div>
+    
+    <div class="tab-content">
+        <!-- Edit Profile Tab -->
+        <div class="tab-pane active" id="profile-edit">
+            <form action="{{ url_for('update_profile') }}" method="post" enctype="multipart/form-data" class="profile-form">
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-user"></i> Información Personal
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label for="username">Nombre de Usuario</label>
+                        <input type="text" id="username" name="username" value="{{ user.username }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bio">Biografía (Opcional)</label>
+                        <textarea id="bio" name="bio" maxlength="150">{{ user.bio or '' }}</textarea>
+                        <div class="char-counter">
+                            <span id="char-count">{{ (user.bio or '')|length }}</span>/150
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="profile-picture-upload">Foto de Perfil</label>
+                        <input type="file" id="profile-picture-upload" name="profile_picture" accept="image/*" class="file-input">
+                        <div class="file-input-placeholder">
+                            <i class="fas fa-upload"></i>
+                            <span id="file-name">{% if user.profile_picture_path %}Cambiar foto{% else %}Subir foto{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Security Tab -->
+        <div class="tab-pane" id="security">
+            <form action="{{ url_for('update_profile') }}" method="post" class="profile-form">
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-key"></i> Cambiar Contraseña
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label for="current-password">Contraseña Actual</label>
+                        <div class="password-input">
+                            <input type="password" id="current-password" name="current_password" required>
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-password">Nueva Contraseña</label>
+                        <div class="password-input">
+                            <input type="password" id="new-password" name="new_password" required minlength="8">
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <p class="form-hint">Mínimo 8 caracteres, incluye letras, números y símbolos para mayor seguridad</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm-password">Confirmar Nueva Contraseña</label>
+                        <div class="password-input">
+                            <input type="password" id="confirm-password" name="confirm_password" required minlength="8">
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-shield-alt"></i> Seguridad de la Cuenta
+                    </h3>
+                    
+                    <div class="security-tips">
+                        <div class="tip">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <div class="tip-content">
+                                <h4 class="tip-title">Protege tu Enlace de Invitación</h4>
+                                <p class="tip-desc">Tu enlace de invitación es único y permite a otros conectarse contigo. Compártelo solo con personas de confianza.</p>
+                            </div>
+                        </div>
+                        <div class="tip">
+                            <i class="fas fa-lock text-primary"></i>
+                            <div class="tip-content">
+                                <h4 class="tip-title">Usa Contraseñas Seguras</h4>
+                                <p class="tip-desc">Recomendamos usar contraseñas únicas, complejas y cambiarlas regularmente.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Actualizar Seguridad
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Paranoia Mode Tab -->
+        <div class="tab-pane" id="paranoia">
+            <form action="{{ url_for('update_paranoia_settings') }}" method="post" class="profile-form">
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-user-secret"></i> Configuración del Modo Paranoia
+                    </h3>
+                    
+                    <div class="paranoia-info">
+                        <p>El Modo Paranoia permite que tus mensajes se autodestruyan después de un tiempo establecido por ti. Cuando está activado, todos tus mensajes enviados tendrán esta característica.</p>
+                    </div>
+                    
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="paranoia-toggle" name="paranoia_mode_enabled" value="1" {% if user.paranoia_mode_enabled %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label">Activar Modo Paranoia</span>
+                    </div>
+                    
+                    <div id="paranoia-settings" class="paranoia-settings {% if user.paranoia_mode_enabled %}active{% endif %}">
+                        <div class="form-group">
+                            <label for="paranoia-duration">Tiempo de autodestrucción (segundos)</label>
+                            <div class="duration-input">
+                                <input type="range" id="paranoia-range" min="5" max="300" step="5" value="{{ user.paranoia_mode_duration }}">
+                                <input type="number" id="paranoia-duration" name="paranoia_mode_duration" min="5" max="300" value="{{ user.paranoia_mode_duration }}">
+                            </div>
+                            <div class="duration-presets">
+                                <button type="button" class="duration-preset" data-value="10">10s</button>
+                                <button type="button" class="duration-preset" data-value="30">30s</button>
+                                <button type="button" class="duration-preset" data-value="60">1min</button>
+                                <button type="button" class="duration-preset" data-value="300">5min</button>
+                            </div>
+                        </div>
+                        
+                        <div class="paranoia-preview">
+                            <h4 class="preview-title">Vista previa:</h4>
+                            <div class="message message-sent">
+                                <div class="message-content">
+                                    Este mensaje se autodestruirá en <span class="paranoia-timer" id="preview-timer">{{ user.paranoia_mode_duration }}</span> segundos.
+                                </div>
+                                <div class="message-meta">
+                                    <span class="message-time">Ahora</span>
+                                    <span class="message-status"><i class="fas fa-check-double"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Invitation Tab -->
+        <div class="tab-pane" id="invite">
+            <div class="form-section">
+                <h3 class="form-section-title">
+                    <i class="fas fa-user-plus"></i> Tu Enlace de Invitación
+                </h3>
+                
+                <div class="invitation-container">
+                    <h4 class="invitation-title">Comparte este enlace para agregar contactos:</h4>
+                    
+                    <div class="invitation-link">
+                        <input type="text" id="invitation-url" class="invitation-input" value="{{ invitation_url }}" readonly>
+                        <button id="copy-btn" class="copy-btn" onclick="copyInvitationLink()">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+                    
+                    <div class="invitation-note">
+                        <p><i class="fas fa-info-circle"></i> Este enlace es único para tu cuenta y no cambia. Cualquier persona con este enlace podrá agregarte como contacto.</p>
+                    </div>
+                </div>
+                
+                <div class="qr-container">
+                    <h4 class="qr-title">Código QR de invitación:</h4>
+                    <div id="qrcode" class="qrcode"></div>
+                    <p class="qr-hint">Muestra este código para que tus contactos lo escaneen</p>
+                    <button id="download-qr" class="btn btn-outline">
+                        <i class="fas fa-download"></i> Descargar QR
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section-title">
+                    <i class="fas fa-share-alt"></i> Compartir
+                </h3>
+                
+                <div class="share-options">
+                    <button class="share-option" onclick="shareViaEmail()">
+                        <i class="fas fa-envelope"></i>
+                        <span>Email</span>
+                    </button>
+                    <button class="share-option" onclick="copyInvitationLink()">
+                        <i class="fas fa-copy"></i>
+                        <span>Copiar</span>
+                    </button>
+                    <button class="share-option" onclick="showQRFullscreen()">
+                        <i class="fas fa-qrcode"></i>
+                        <span>Ver QR</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Fullscreen Modal -->
+<div id="qr-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Escanea este código QR</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="qrcode-large" class="qrcode-large"></div>
+            <p class="qr-modal-hint">Este código QR contiene tu enlace de invitación CipherCup</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tabs functionality
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                
+                // Hide all tabs
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+                
+                // Show target tab
+                button.classList.add('active');
+                document.getElementById(targetTab).classList.add('active');
+                
+                // Update URL hash
+                window.location.hash = targetTab;
+            });
+        });
+        
+        // Handle URL hash for direct tab access
+        const handleHash = () => {
+            const hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                const targetButton = document.querySelector(`[data-tab="${hash}"]`);
+                if (targetButton) {
+                    targetButton.click();
+                }
+            }
+        };
+        
+        // Call on page load
+        handleHash();
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHash);
+        
+        // File upload handling
+        const fileInput = document.getElementById('profile-picture-upload');
+        const fileName = document.getElementById('file-name');
+        
+        if (fileInput && fileName) {
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    fileName.textContent = this.files[0].name;
+                    
+                    // Simple file size validation
+                    if (this.files[0].size > 5 * 1024 * 1024) {
+                        alert('La imagen es demasiado grande. El tamaño máximo es 5MB.');
+                        this.value = '';
+                        fileName.textContent = '{% if user.profile_picture_path %}Cambiar foto{% else %}Subir foto{% endif %}';
+                    }
+                } else {
+                    fileName.textContent = '{% if user.profile_picture_path %}Cambiar foto{% else %}Subir foto{% endif %}';
+                }
+            });
+        }
+        
+        // Password visibility toggle
+        const toggleButtons = document.querySelectorAll('.toggle-password');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                const icon = this.querySelector('i');
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
+        
+        // Bio character counter
+        const bioInput = document.getElementById('bio');
+        const charCount = document.getElementById('char-count');
+        
+        if (bioInput && charCount) {
+            bioInput.addEventListener('input', function() {
+                const currentLength = this.value.length;
+                charCount.textContent = currentLength;
+                
+                if (currentLength > 130) {
+                    charCount.classList.add('text-warning');
+                } else {
+                    charCount.classList.remove('text-warning');
+                }
+                
+                if (currentLength > 145) {
+                    charCount.classList.add('text-danger');
+                } else {
+                    charCount.classList.remove('text-danger');
+                }
+            });
+        }
+        
+        // Password validation
+        const securityForm = document.querySelector('#security form');
+        const newPassword = document.getElementById('new-password');
+        const confirmPassword = document.getElementById('confirm-password');
+        
+        if (securityForm && newPassword && confirmPassword) {
+            securityForm.addEventListener('submit', function(event) {
+                if (newPassword.value !== confirmPassword.value) {
+                    event.preventDefault();
+                    alert('Las contraseñas no coinciden. Por favor, verifica que sean iguales.');
+                }
+            });
+        }
+        
+        // Paranoia mode toggle
+        const paranoiaToggle = document.getElementById('paranoia-toggle');
+        const paranoiaSettings = document.getElementById('paranoia-settings');
+        
+        if (paranoiaToggle && paranoiaSettings) {
+            paranoiaToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    paranoiaSettings.classList.add('active');
+                } else {
+                    paranoiaSettings.classList.remove('active');
+                }
+            });
+        }
+        
+        // Paranoia duration sync between range and number inputs
+        const paranoiaRange = document.getElementById('paranoia-range');
+        const paranoiaDuration = document.getElementById('paranoia-duration');
+        const previewTimer = document.getElementById('preview-timer');
+        
+        if (paranoiaRange && paranoiaDuration && previewTimer) {
+            paranoiaRange.addEventListener('input', function() {
+                paranoiaDuration.value = this.value;
+                previewTimer.textContent = this.value;
+            });
+            
+            paranoiaDuration.addEventListener('input', function() {
+                paranoiaRange.value = this.value;
+                previewTimer.textContent = this.value;
+            });
+            
+            // Duration preset buttons
+            const presetButtons = document.querySelectorAll('.duration-preset');
+            presetButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const value = this.getAttribute('data-value');
+                    paranoiaRange.value = value;
+                    paranoiaDuration.value = value;
+                    previewTimer.textContent = value;
+                });
+            });
+        }
+        
+        // Generate QR code
+        const qrcode = new QRCode(document.getElementById("qrcode"), {
+            text: "{{ invitation_url }}",
+            width: 128,
+            height: 128,
+            colorDark: "#00ff9d",
+            colorLight: "#252836",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        // Large QR code for modal
+        const qrcodeLarge = new QRCode(document.getElementById("qrcode-large"), {
+            text: "{{ invitation_url }}",
+            width: 256,
+            height: 256,
+            colorDark: "#00ff9d",
+            colorLight: "#252836",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        // QR modal functionality
+        const qrModal = document.getElementById('qr-modal');
+        const closeModal = document.querySelector('.close-modal');
+        
+        if (qrModal && closeModal) {
+            closeModal.addEventListener('click', function() {
+                qrModal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target == qrModal) {
+                    qrModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Download QR code
+        const downloadQR = document.getElementById('download-qr');
+        if (downloadQR) {
+            downloadQR.addEventListener('click', function() {
+                const canvas = document.querySelector('#qrcode canvas');
+                if (canvas) {
+                    const image = canvas.toDataURL("image/png");
+                    const link = document.createElement('a');
+                    link.href = image;
+                    link.download = 'ciphercup-invite-qr.png';
+                    link.click();
+                }
+            });
+        }
+        
+        // Fetch user stats
+        async function fetchUserStats() {
+            try {
+                const response = await fetch('/api/user-stats');
+                const data = await response.json();
+                
+                if (data) {
+                    document.getElementById('contacts-count').textContent = data.contacts_count;
+                    document.getElementById('messages-count').textContent = data.messages_count;
+                }
+            } catch (error) {
+                console.error('Error fetching user stats:', error);
+                document.getElementById('contacts-count').textContent = '?';
+                document.getElementById('messages-count').textContent = '?';
+            }
+        }
+        
+        fetchUserStats();
+    });
+    
+    // Share functions
+    function copyInvitationLink() {
+        const invitationInput = document.getElementById('invitation-url');
+        invitationInput.select();
+        document.execCommand('copy');
+        
+        const copyBtn = document.getElementById('copy-btn');
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copiado';
+        
+        setTimeout(() => {
+            copyBtn.innerHTML = originalText;
+        }, 2000);
+    }
+    
+    function shareViaEmail() {
+        const subject = encodeURIComponent('Únete a CipherCup - Mensajería segura y anónima');
+        const body = encodeURIComponent('Hola,\n\nQuiero invitarte a CipherCup, una plataforma de mensajería segura y anónima. Usa este enlace para conectar conmigo:\n\n{{ invitation_url }}\n\n¡Nos vemos allí!');
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    
+    function showQRFullscreen() {
+        const modal = document.getElementById('qr-modal');
+        modal.style.display = 'flex';
+    }
+</script>
+{% endblock %}
