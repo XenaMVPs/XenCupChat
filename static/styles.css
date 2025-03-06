@@ -3847,3 +3847,45 @@ input:checked + .toggle-slider:before {
     align-items: center;
     justify-content: center;
 }
+
+
+
+.file-input-container {
+    position: relative;
+    /* Deja padding o display block si lo necesitas */
+  }
+  
+  .file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+  }
+  
+  .file-input-placeholder {
+    /* El “rectángulo” clicable */
+    padding: var(--spacing-md);
+    background-color: var(--bg-tertiary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+  }
+  
+  .file-input-placeholder:hover {
+    border-color: var(--primary);
+  }
+  
+  /* Evita que se extienda fuera de su form-group */
+  .form-group.file-input-container {
+    width: auto; /* O el ancho que requieras */
+  }
+  

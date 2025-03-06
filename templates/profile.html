@@ -75,15 +75,23 @@
                         </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group file-input-container">
                         <label for="profile-picture-upload">Foto de Perfil</label>
-                        <input type="file" id="profile-picture-upload" name="profile_picture" accept="image/*" class="file-input">
+                        <input
+                            type="file"
+                            id="profile-picture-upload"
+                            name="profile_picture"
+                            class="file-input"
+                            accept="image/*"
+                        >
                         <div class="file-input-placeholder">
                             <i class="fas fa-upload"></i>
-                            <span id="file-name">{% if user.profile_picture_path %}Cambiar foto{% else %}Subir foto{% endif %}</span>
+                            <span id="file-name">
+                                {% if user.profile_picture_path %}Cambiar foto{% else %}Subir foto{% endif %}
+                            </span>
                         </div>
                     </div>
-                </div>
+                    
                 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">
