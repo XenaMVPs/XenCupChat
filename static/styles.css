@@ -3827,3 +3827,23 @@ input:checked + .toggle-slider:before {
         max-width: 90%;
     }
 }
+
+
+
+/* === Fix para que el botón de editar foto no cubra toda el área === */
+.profile-avatar-container {
+    position: relative; /* Asegura que el label absoluto se ancle solo al contenedor */
+}
+
+.avatar-edit-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 10; /* Para que quede encima, pero sin cubrir toda la imagen */
+    width: 36px; 
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
